@@ -53,7 +53,6 @@ class MLData(object):
         self.train["labelIndex"] = self.train["label"].map(labelNameToIndex)
         self.dev["labelIndex"] = self.dev["label"].map(labelNameToIndex)
 
-
     def process_data(self, method="word2vec"):
         """
         generate date use for sklearn
@@ -73,11 +72,11 @@ class MLData(object):
         method: word2vec, tfidf, fasttext
         """
         if method == "tfidf":
-            data = [" ".join(query) for query in dat["queryCutRMStopWord"]]
+            data = [" ".join(query) for query in data["queryCutRMStopWord"]]
             return self.em.tfidf.transform(data)
         elif method == "word2vec":
-            return np.vstack(data["queryCutRMStopWord"].apply(lambda x: wam(x, self.em.w2v)[0]))
+            return np.vstack(data["queryCutRMStopWord"].apply(lambda x: wam(x, self.em.w2v)))
         elif method == "fasttext":
-            return np.vstack(data["queryCutRMStopWord"].apply(lambda x: wam(x, self.em.fast)[0]))
+            return np.vstack(data["queryCutRMStopWord"].apply(lambda x: wam(x, self.em.fast)))
         else:
             NotImplementedError

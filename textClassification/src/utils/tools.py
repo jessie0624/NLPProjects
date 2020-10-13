@@ -69,7 +69,7 @@ def wam(sentence, w2v_model, method="mean", aggregate=True):
         return arr
     if len(arr) > 0:
         if method == "mean":
-            return np.mean(np.array(arr), axis=0)
+            return np.mean(np.array(arr), axis=0) # 沿着句子长度的方向算均值或max 去除句子长度导致的矩阵的问题
         elif method == "max":
             return np.max(np.array(arr), axis=0)
         else:

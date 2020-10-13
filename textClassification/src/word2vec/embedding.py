@@ -28,7 +28,7 @@ class SingletonMetaclass(type):
 
 class Embedding(metaclass=SingletonMetaclass):
 	def __init__(self):
-		self.stopWords = Path(root_path, "data", "stopwords.txt").open(encoding="utf-8").readlines()
+		self.stopWords = Path(root_path, "data", "stopwords.txt").open(encoding="utf-8").read().split("\n")
 
 	def load_data(self):
 		'''
@@ -85,7 +85,7 @@ class Embedding(metaclass=SingletonMetaclass):
 			size=300,  # 向量维度
 			window=3,  # 移动窗口
 			alpha=0.03,
-			min_count=2,  # 对字典进行截断, 小于该数的则会被切掉,增大该值可以减少词表个pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple数
+			min_count=2,  # 对字典进行截断, 小于该数的则会被切掉,增大该值可pip install -i https://pypi.tuna.tsinghua.edu.cn/simple gevent以减少词表个pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple数
 			iter=30,  # 迭代次数
 			max_n=3,
 			word_ngrams=2,
