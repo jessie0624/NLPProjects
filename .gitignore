@@ -8,6 +8,7 @@
 textClassification/model/
 textClassification/logs/
 textClassification/data/
+*.json
 
 #Byte-compiled / optimized / DLL files
 __pycache__/

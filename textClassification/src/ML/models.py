@@ -37,7 +37,19 @@ class Models(object):
         
         self.ml_data = MLData(debug_mode=True)
         if feature_engineer:
-            pass
+            self.model = lgb.LGBMClassifier(objective="nulticlass",
+                                            n_jobs=10,
+                                            num_class=33,
+                                            num_leaves=30,
+                                            reg_alpha=10,
+                                            reg_lambda=200,
+                                            max_depth=3,
+                                            learning_rate=0.05,
+                                            n_estimators=2000,
+                                            bggging_freq=1,
+                                            bagging_fraction=0.9,
+                                            feature_fraction=0.8,
+                                            seed=1440)
         else:
             self.models = [
                 RandomForestClassifier(n_estimators=500,
