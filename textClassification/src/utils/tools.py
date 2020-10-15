@@ -7,8 +7,11 @@ from logging import handlers
 
 from sklearn import metrics
 import numpy as np
-
 import jieba
+import torch 
+from tqdm import tqdm 
+tqdm.pandas()
+
 
 def query_cut(query):
     '''
@@ -76,4 +79,14 @@ def wam(sentence, w2v_model, method="mean", aggregate=True):
             raise NotImplementedError
     else:
         return np.zeros(300)
+
+def padding(indice, max_length, pad_idx=0):
+    pad_indice = [item + [pad_idx] * max(0, max_length - len(item)) for item in indice]
+    return torch.tensor(pad_indice)
+
+def get_time_dif(start_time):
+    """获取已使用的时间"""
+    end_time = time.time()
+    time_dif = end_time - start_time
+    return timedelta(seconds=int(round(time_dif)))
 

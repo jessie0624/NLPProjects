@@ -34,6 +34,8 @@ class MLData(object):
             self.dev = self.dev.sample(n=100).reset_index(drop=True)
         
         # 1. 分词 (由于数据已经分好词,这里就跳过分词, 如果原数据没有分词,可以通过 jieba.cut() 来分词)
+        self.train["queryCut"] = self.train.text.apply(lambda x: [x.split()])
+        self.dev["queryCut"] = self.dev.text.apply(lambda x: [x.split()])
         # 2. 去除停用词
         # self.stopWords = open(config.root_path + '/data/stopwords.txt', encoding="utf-8").read().splitlines()
         self.train["queryCutRMStopWord"] = self.train.text.apply(
