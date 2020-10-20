@@ -1,6 +1,7 @@
 import pandas as pd 
 from tqdm import tqdm 
-import fasttext 
+import fasttext
+from fasttext import train_supervised
 import os
 from __init__ import *
 from src.utils.config import root_path

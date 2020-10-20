@@ -1,4 +1,9 @@
 # data/logs
+*.ipynb
+*.txt
+*.ipynb_checkpoints/
+FQA/model/
+FQA/data
 */data/*.csv
 */data/*.json
 */data/*.txt
