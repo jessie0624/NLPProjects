@@ -1,3 +1,6 @@
+"""
+Desc: 采用faiss的HNSW包,训练一个NHSW召回模型
+"""
 import sys, os      
 import time 
 import numpy as np          
@@ -55,6 +58,7 @@ class HNSW(object):
                 data_path=None):
         self.w2v_model = KeyedVectors.load(str(w2v_path))
         self.data = self.load_data(str(data_path))
+        self.model_path = model_path
         if model_path and os.path.exists(model_path):
             self.index = self.load_hnsw(str(model_path))
         elif data_path:
@@ -74,17 +78,18 @@ class HNSW(object):
         data = data.dropna()
         return data 
     
-    def evaluate(self, vecs, topk=1, index=None):
+    def evaluate(self, vecs, topk=1):
         """
         @desc: 评估模型
         @param: text the query
         @return: None
         """
         logger.info("Evaluating...")
+        index = self.load_hnsw(str(self.model_path))
         nq, d = vecs.shape 
         t0 = time.time()
         # if index is None:
-        D, I = self.index.search(vecs, topk)
+        D, I = index.search(vecs, topk)
         # else:
         #     D, I = index.search(vecs, 1)
         t1 = time.time()
@@ -122,8 +127,8 @@ class HNSW(object):
         print('dtype: ', vecs.dtype)
         index.add(vecs)  # add vectors to the index
         print("total: ", index.ntotal)
-        # self.evaluate(vecs[:10000], index)
         faiss.write_index(index, str(to_file))
+        self.evaluate(vecs[:10000], index)
         return index
 
     

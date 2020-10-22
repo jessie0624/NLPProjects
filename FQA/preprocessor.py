@@ -116,12 +116,12 @@ def read_file(path, is_train=False):
     return chat
 
 
-def clean(sent, sep='<'):
+def clean(sent, sep='['):
     """
     @desc: 过滤无用符号，并对[SEP]等分割符号，假如前后空格，避免影响分词结果。
     @param:
         - sent: 句子
-        - sep: 分隔符是以< or [开头
+        - sep: 分隔符是以 [SEP] 
     @return: string 清洗后的句子
     """                        
     sent = re.sub(r"[\s+\.\!\/_,$%^*(+\"\')]+|[+——()?【】“”！，。？、~@#￥%……&*（）]+",

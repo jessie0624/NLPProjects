@@ -1,3 +1,9 @@
+"""
+Desc: 训练一个word2vec 词嵌入模型
+目前用的是输入数据为空格切分的单个字, 通过word2vec找到Phrases 得到对应的词语,然后进行Word2vec模型训练
+
+可以改进的方式: 可以做个对比  用结巴分词得到的词向量与这里的结果对比. 注意 这里 对语料的处理 [数字x] [SEP]等.
+"""
 import logging 
 import multiprocessing 
 import os, sys 
@@ -48,7 +54,7 @@ def train_w2v(train, to_file):
     t = time()
     w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=15, report_delay=1)
     print("Time to train vocab: {} mins".format(round((time() - t)/60, 2)))
-    w2v_model.save(str(to_file))
+    w2v_model.save(os.fspath(to_file))
 
 if __name__ == "__main__":
     train = read_data(train_raw)
