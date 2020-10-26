@@ -155,7 +155,7 @@ class HNSW(object):
         test_vec = wam(clean(text), self.w2v_model)
         k = 4
         D, I = self.index.search(test_vec, k)
-        print(I)
+        # print(I)
         return pd.concat((self.data.iloc[I[0]]['custom'].reset_index(),
                           self.data.iloc[I[0]]['assistance'].reset_index(drop=True),
                           pd.DataFrame(D.reshape(-1, 1), columns=['q_distance'])), axis=1)

@@ -63,6 +63,10 @@ M = 64
 hnsw_path = model_path / "retrieval" / "hnsw_index"
 
 
+# result folder
+result = root_path / "result"
+result.mkdir(parents=True, exist_ok=True)
+
 ### Config ###
 is_cuda = True 
 if is_cuda:
