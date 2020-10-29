@@ -1,7 +1,7 @@
 """
 DESC: 训练深度匹配模型
 """
-import os, sys 
+import os, sys, logging
 import torch 
 from torch.utils.data import DataLoader 
 from data import DataProcessForSentence
@@ -10,24 +10,26 @@ from transformers import BertTokenizer
 from matchnn import BertModelTrain
 from transformers.optimization import AdamW
 sys.path.append('..')
+from utils.tools import create_logger
 from config import is_cuda, root_path, rank_path, ranking_train, \
     ranking_test, ranking_dev, max_sequence_length
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
+logger = create_logger(os.fspath(root_path/'log/train_matchnn'))
 
 seed = 9
 torch.manual_seed(seed)
 if is_cuda: 
-    torch.cuda.manual_seed_add(seed)
+    torch.cuda.manual_seed_all(seed)
 
 def main(train_file, dev_file, target_dir, \
          epochs=10, batch_size=32, lr=2e-05, \
          patience=3, max_grad_norm=10.0, checkpoint=None):
     
-    bert_tokenizer = BertTokenizer.from_pretrianed(os.fspath(root_path \
+    bert_tokenizer = BertTokenizer.from_pretrained(os.fspath(root_path \
         / 'lib/bert/vocab.txt'), do_lower_case=True)
     device = torch.device("cuda") if is_cuda else torch.device("cpu")
-    logger.info(20 * "=", " preparing for training ", "="*20)
+    logger.info(20 * "="+ " preparing for training "+"="*20)
     if not target_dir.exists():
         target_dir.mkdir(parents=True, exist_ok=True)
     
@@ -63,23 +65,23 @@ def main(train_file, dev_file, target_dir, \
 
     epochs_count, train_losses, valid_losses = [], [], []
 
-    if checkpint:
+    if checkpoint:
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint["epoch"] + 1
         best_score = checkpoint["best_score"]
         logger.info("\t * Training will continue on existing model from epoch {}...".format(start_epoch))
 
         model.load_state_dict(checkpoint["model"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
+        # optimizer.load_state_dict(checkpoint["optimizer"])
         epochs_count += checkpoint["epochs_count"]
         train_losses = checkpoint["train_losses"]
         valid_losses = checkpoint["valid_losses"]
     
     _, valid_loss, _valid_accuracy, auc = validate(model, dev_loader)
     logger.info("\t* Validation loss before training:{:.4f}, accuracy:{:.4f}%, auc:{:.4f}"
-    .format(valid_loss, (valid_accuracy * 100), auc))
+    .format(valid_loss, (_valid_accuracy * 100), auc))
 
-    logger.info("\n", 20*"=", "Training Bert model on device:{}".format(device), 20*"=")
+    logger.info("\n"+ 20*"="+ "Training Bert model on device:{}" + 20*"=".format(device))
     patience_counter = 0
     
     for epoch in range(start_epoch, epochs + 1):
@@ -92,7 +94,7 @@ def main(train_file, dev_file, target_dir, \
         logger.info("-> Training time:{:.4f}s, loss={:.4f}, accuracy:{:.4f}".format(epoch_time, epoch_loss, (epoch_accuracy*100)))
 
         logger.info("* Validation epoch {}".format(epoch)) 
-        epoch_time, epoch_loss, epoch_accuracy = validate(model, dev_loader)
+        epoch_time, epoch_loss, epoch_accuracy, epoch_auc = validate(model, dev_loader)
         valid_losses.append(epoch_loss)       
         logger.info("-> Validate time:{:.4f}s, loss={:.4f}, accuracy:{:.4f}".format(epoch_time, epoch_loss, (epoch_accuracy*100)))
 
@@ -107,10 +109,11 @@ def main(train_file, dev_file, target_dir, \
                 "epoch": epoch,
                 "model": model.state_dict(),
                 "best_score": best_score,
+                "optimizer": optimizer,
                 "epochs_count": epochs_count,
                 "train_losses": train_losses,
                 "valid_losses": valid_losses
-            }, os.fspath(targt_dir / 'best.pth.tar'))
+            }, os.fspath(target_dir / str(epoch)+'best.pth.tar'))
         
         if patience_counter >= patience:
             logger.info("-> Early stopping: patience limit reached, stopping...")
@@ -118,4 +121,4 @@ def main(train_file, dev_file, target_dir, \
 
 
 if __name__ == '__main__':
-    main(ranking_train, ranking_dev, rank_path)
+    main(ranking_train, ranking_dev, rank_path, checkpoint=os.fspath(rank_path/"best.pth.tar"))

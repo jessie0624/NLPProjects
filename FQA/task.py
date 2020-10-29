@@ -27,13 +27,14 @@ def retrieve(k):
     for query in data_set['custom']:
         query = query.strip()
         intention = it.predict(query)
-        if len(query) > 1 and intention == '__label__1':
+        print(query, intention)
+        if len(query) > 1 and intention[0][0] == '__label__1':
             res = res.append(pd.DataFrame({
                 "query": [query]*k,
                 "retrieved": hnsw.search(query, k)['custom']
             }))
     
-    res.to_csv('result/retrieved.csv', index=False)
+    res.to_csv(os.fspath(config.result_path/'retrieved.csv'), index=False)
 
 
 def rank():

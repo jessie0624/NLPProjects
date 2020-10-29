@@ -33,11 +33,11 @@ class BertModelTrain(nn.Module):
                                 attention_mask = batch_seq_masks,
                                 token_type_ids = batch_seq_segments,
                                 labels = labels)
-        probabilities = nn.function.softmax(logits, dim=-1)
+        probabilities = nn.functional.softmax(logits, dim=-1)
         return loss, logits, probabilities
 
 
-class BertModelPredict(nn.module):
+class BertModelPredict(nn.Module):
     """
     The base model for doing prediction using trained matching network
     """
@@ -48,7 +48,7 @@ class BertModelPredict(nn.module):
         self.device = torch.device("cuda") if is_cuda else torch.device("cpu")
     
     def forward(self, batch_seqs, batch_seq_masks, batch_seq_segments):
-        logits = self.bert(iinput_ids = batch_seqs,
+        logits = self.bert(input_ids = batch_seqs,
                             attention_mask = batch_seq_masks,
                             token_type_ids = batch_seq_segments)[0]
         probabilities = nn.functional.softmax(logits, dim=-1)

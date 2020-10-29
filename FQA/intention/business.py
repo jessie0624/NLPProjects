@@ -22,10 +22,10 @@ import pandas as pd
 from tqdm import tqdm 
 import config 
 from config import root_path 
-from preprocessor import clean, filter_content
+from utils.preprocessor import clean, filter_content
 from pathlib import Path 
 from typing import List 
-
+from collections import defaultdict
 tqdm.pandas()
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,13 @@ class Intention(object):
                  model_test_file=config.business_test): # path to save test data for intention
 
         self.model_path = model_path
-        self.data = pd.read_csv(data_path)
+        self.data = pd.read_csv(os.fspath(data_path)).dropna(how='any', subset=['custom'])
+
         if model_path and Path(model_path).exists():
-            self.fast = fasttext.load_model(model_path)
+            print('load model')
+            self.fast = fasttext.load_model(os.fspath(model_path))
         else:
+            print('train model')
             self.kw = self.build_keyword(sku_path, to_file=kw_path)
             self.data_process(model_train_file)
             self.fast = self.train(model_train_file, model_test_file)
@@ -85,8 +88,8 @@ class Intention(object):
         """
         logger.info("Processing data.")
         
-        if model_data_file.exists():
-            return 
+        # if model_data_file.exists():
+        #     return 
         
         self.data['is_bussiness'] = self.data['custom'].progress_apply(
             lambda x: 1 if any(kw in x for kw in self.kw) else 0)
@@ -107,10 +110,10 @@ class Intention(object):
         """
         logger.info("Trainning classifier..")
         # fasttext.train_supervised(input='cooking.train'
-        classifier = fasttext.train_supervised(input=model_data_file)#, dim=100, epoch=10, \
+        classifier = fasttext.train_supervised(input=os.fspath(model_data_file))#, dim=100, epoch=10, \
             # lr=0.1, wordNgrams=2, loss='softmax', thread=5, verbose=True)
         self.test(classifier, model_test_file)
-        classifier.save_model(self.model_path)
+        classifier.save_model(os.fspath(self.model_path))
         logger.info("Model saved")
         return classifier 
     
@@ -123,14 +126,19 @@ class Intention(object):
         @return
         """
         logger.info("Testing trained model.")
-        test = pd.read_csv(config.test_path).fillna("")
+        test = pd.read_csv(os.fspath(config.test_path)).fillna("")
         test["is_business"] = test['custom'].apply(lambda x: 1 if any(kw in x for kw in self.kw) else 0)
-        for index, row in tqdm(test.iterrows(), total=test.shape[0]):
-            outline = clean(row["custom"]) + "\t__label__" + str(
-                int(row['is_business']) + '\n')
-            model_test_file.write_text(outline)
-         
-        result = classifier.test(model_test_file) 
+        # for index, row in tqdm(test.iterrows(), total=test.shape[0]):
+        #     outline = clean(row["custom"]) + "\t__label__" + str(
+        #         int(row['is_business'])) + '\n'
+        #     model_test_file.write_text(outline)
+
+        with open(model_test_file, "w") as wf:
+            for index, row in tqdm(test.iterrows(), total=test.shape[0]):
+                outline = clean(row['custom']) + "\t__label__" + str(int(row["is_business"])) + "\n"
+                wf.write(outline)
+
+        result = classifier.test(os.fspath(model_test_file))
         # fasttext.test的 output:[num_samples, top1-precision, top1-recall], 
         # 可以通过设置参数k=5, 获得top5 precision, top5 recall. 
         # The precision is the number of correct labels among the labels predicted by fastText. 
@@ -152,6 +160,14 @@ class Intention(object):
         logger.info("Predicting")
         label, score = self.fast.predict(clean(filter_content(text)))
         return label, score
+
+    # def cal_precision_and_recall(self, model_test_file):
+    #     precision = defaultdict(int,1)
+    #     recall = defaultdict(int,1)
+    #     total = defaultdict(int, 1)
+    #     with open(os.fspath(model_test_file), 'r') as rf:
+    #         for index, row in 
+            
 
 if __name__ == "__main__":
     it = Intention(config.train_path, 

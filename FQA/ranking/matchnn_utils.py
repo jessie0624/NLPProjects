@@ -147,7 +147,7 @@ def train(model, dataloader, optimizer, epoch_number, max_gradient_norm):
     device = model.device
     epoch_start = time.time()
     batch_time_avg = 0.0
-    running_loss, correct_probs = 0.0, 0
+    running_loss, correct_preds = 0.0, 0
     tqdm_batch_iterator = tqdm(dataloader)
     
     for batch_index, (batch_seqs, batch_seq_masks, batch_seq_segments, \

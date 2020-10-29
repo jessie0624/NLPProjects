@@ -17,16 +17,16 @@ from six import iteritems
 sys.path.append("..")
 import config 
 from config import root_path, rank_path,  ranking_train, stop_words_path
-
-logger = logging.getLogger(__name__)
-
+from utils.tools import create_logger
+# logger = logging.getLogger(__name__)
+logger = create_logger(os.fspath(root_path/'log/ranking_bm25'))
 class Corpus(object):
     """
     返回corpus list, type : List[List]
     """
     def __init__(self, train_path=ranking_train):
-        self.data = pd.read_csv(train_path, sep='\t', header=None,
-                names=['question1', 'question2', 'target'])
+        self.data = pd.read_csv(os.fspath(train_path))#, sep='\t', header=None,
+                # names=['question1', 'question2', 'target'])
         self.corpus = list(self.data['question2'].apply(lambda x: jieba.lcut(str(x))))
 
 class BM25(object):
@@ -55,7 +55,7 @@ class BM25(object):
     def initialize(self):
         self.corpus_size = len(self.corpus)
         self.avgdl = sum(map(lambda x: float(len(x)), self.corpus))/self.corpus_size
-        # 单词在每个文档中出现的频率  fi = self.tf_list[index][qi]
+        # 单词在每个文档中出现的频率  fi = self.tf_list[indelogger = create_logger(os.fspath(root_path/'log/train_matchnn'))x][qi]
         self.tf_list = list(map(lambda x: Counter([word for word in x]), self.corpus))
         # 单词出现的文档个数
         self.nq = Counter([word for doc in self.tf_list for word in doc])
@@ -67,6 +67,7 @@ class BM25(object):
             ).strip().split('\n')
 
     def saver(self, save_path):
+        print('save model')
         joblib.dump(self.idf, os.fspath(save_path / 'bm25_idf.bin'))
         joblib.dump(self.avgdl, os.fspath(save_path / 'bm25_avgdl.bin'))
     

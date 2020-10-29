@@ -14,7 +14,8 @@ from gensim.models.phrases import Phraser, Phrases
 sys.path.append('..')
 import config
 from config import root_path, train_raw, w2v_path
-from preprocessor import clean, read_file
+from utils.preprocessor import clean, read_file
+
 logger = logging.getLogger(__name__)
 
 def read_data(file_path):

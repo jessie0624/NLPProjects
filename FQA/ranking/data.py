@@ -31,11 +31,11 @@ class DataProcessForSentence(Dataset):
         @return:
             - seqs, seq_masks, labels
         """
-        df = pd.read_csv(file, sep='\t', header=None, names=['question1', 'question2', 'label'])
-        df['question1'] = df['question1'].apply(lambda x: "".join(x.split()))
-        df['question2'] = df['question2'].apply(lambda x: "".join(x.split()))
-        labels = df['label'].astype('int8').values 
-
+        df = pd.read_csv(file).dropna()#, sep='\t', header=None, names=['question1', 'question2', 'label']).dropna(how='any')
+        df['question1'] = df['question1'].apply(lambda x: "".join(str(x).split()))
+        df['question2'] = df['question2'].apply(lambda x: "".join(str(x).split()))
+        labels = df['target'].astype('int8').values 
+         
         # 切词
         tokens_seq_1 = list(map(self.bert_tokenizer.tokenize, df['question1'].values))
         tokens_seq_2 = list(map(self.bert_tokenizer.tokenize, df['question2'].values))
@@ -71,7 +71,7 @@ class DataProcessForSentence(Dataset):
         seq = ['[CLS]'] + tokens_seq_1 + ['[SEP]'] + tokens_seq_2 + ['[SEP]']
         seq_segment = [0] * (len(tokens_seq_1) + 2) + [1] * (len(tokens_seq_2) + 1)
         # ID 化
-        seq = self.bert_tokenizer.covert_tokens_to_ids(seq)
+        seq = self.bert_tokenizer.convert_tokens_to_ids(seq) # convert_tokens_to_ids
 
         # 根据max_seq_len 与seq的长度产生填充序列
         padding = [0] * (self.max_seq_len - len(seq))

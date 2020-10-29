@@ -21,6 +21,8 @@ class Corpus(object):
         self.data = self.data_reader(ranking_train) + \
                     self.data_reader(ranking_test) + \
                     self.data_reader(ranking_dev)
+        print(self.data[:10])
+        # self.data.to_csv(os.fspath(root_path / "result/trainlm_data.csv"), index=False)
         self.stopwords = stop_words_path.open(mode='r',encoding='utf-8').read(\
             ).strip().split('\n')
         self.preprocessor()

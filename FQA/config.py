@@ -62,10 +62,12 @@ ef_construction = 3000
 M = 64
 hnsw_path = model_path / "retrieval" / "hnsw_index"
 
+# BERT parameters
+max_sequence_length = 103
 
 # result folder
-result = root_path / "result"
-result.mkdir(parents=True, exist_ok=True)
+result_path = root_path / "result"
+result_path.mkdir(parents=True, exist_ok=True)
 
 ### Config ###
 is_cuda = True 

@@ -10,7 +10,7 @@ import faiss
 
 sys.path.append('..')
 import config 
-from preprocessor import clean     
+from utils.preprocessor import clean     
 import logging                 
 
 logger = logging.getLogger(__name__)
@@ -59,12 +59,13 @@ class HNSW(object):
         self.w2v_model = KeyedVectors.load(str(w2v_path))
         self.data = self.load_data(str(data_path))
         self.model_path = model_path
-        if model_path and os.path.exists(model_path):
-            self.index = self.load_hnsw(str(model_path))
-        elif data_path:
-            self.index = self.build_hnsw(str(model_path), ef=ef, m=M)
-        else:
-            logger.error("No existing model and no building data provided")
+        self.index = self.build_hnsw(str(model_path), ef=ef, m=M) 
+        # if model_path and os.path.exists(model_path):
+        #     self.index = self.load_hnsw(str(model_path))
+        # elif data_path:
+        #     self.index = self.build_hnsw(str(model_path), ef=ef, m=M)
+        # else:
+        #     logger.error("No existing model and no building data provided")
     
     def load_data(self, data_path):
         """
@@ -128,7 +129,7 @@ class HNSW(object):
         index.add(vecs)  # add vectors to the index
         print("total: ", index.ntotal)
         faiss.write_index(index, str(to_file))
-        self.evaluate(vecs[:10000], index)
+        # self.evaluate(vecs[:10000], index)
         return index
 
     
@@ -151,9 +152,10 @@ class HNSW(object):
         @return:
             - DataFrame contianing the customer inpute, assistance response and the distance to the query. 
         """
-        logger.info("Searching for {text}")
+        logger.info("Searching for "+text)
         test_vec = wam(clean(text), self.w2v_model)
-        k = 4
+        print(test_vec.shape)
+        # k = 5
         D, I = self.index.search(test_vec, k)
         # print(I)
         return pd.concat((self.data.iloc[I[0]]['custom'].reset_index(),
@@ -167,5 +169,5 @@ if __name__ == "__main__":
     print(hnsw.search(test, k=10))
     eval_vecs = np.stack(hnsw.data['custom_vec'].values).reshape(-1, 300).astype('float32')
     
-    hnsw.evaluate(eval_vecs[:1000], 10)
+    hnsw.evaluate(eval_vecs[:10000], 10)
     
