@@ -1,5 +1,11 @@
 
 ##### LightGBM参数
+    lightgbm:
+    https://blog.csdn.net/weixin_39807102/article/details/81912566   
+    
+    https://blog.csdn.net/weixin_44750583/article/details/103896854  
+    
+    https://blog.csdn.net/weixin_42001089/article/details/85343332
 
 https://lightgbm.readthedocs.io/en/latest/Parameters.html
 

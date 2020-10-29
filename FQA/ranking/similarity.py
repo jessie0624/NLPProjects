@@ -97,7 +97,7 @@ class TextSimilarity(object):
         @return:
             - List[str, set]
         """
-        words = [word for word, t in jieba.cut(str1)]
+        words = [word for word in jieba.cut(str1)]
         return [" ".join(words), set(words)]
     
     def JaccardSim(self, str1, str2):
@@ -178,7 +178,7 @@ class TextSimilarity(object):
 
         self.corpus_tfidf = self.tfidf[self.corpus] 
         self.index = similarities.MatrixSimilarity(self.corpus_tfidf)
-        
+
 
     def generate_all(self, str1, str2):
         return {
