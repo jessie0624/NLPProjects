@@ -115,6 +115,8 @@ class RANK(object):
                                         row['question2'])[1], axis=1)
         if do_train:
             data.to_csv(os.fspath(result_path / "gbm_data.csv"), index=False)
+        else:
+            data.to_csv(os.fspath(result_path / "ranker_test_data.csv"), index=False)
         return data 
     
     def trainer(self):
@@ -151,6 +153,7 @@ class RANK(object):
         """
         columns = [i for i in data.columns if i not in ['question1', 'question2', 'target']]
         result = self.gbm.predict(data[columns])
+        print(data.shape, result.shape)
         return result 
 
 if __name__ == '__main__':

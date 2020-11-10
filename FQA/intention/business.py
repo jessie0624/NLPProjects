@@ -45,7 +45,7 @@ class Intention(object):
             print('load model')
             self.fast = fasttext.load_model(os.fspath(model_path))
         else:
-            print('train model')
+            print('train mtrainodel')
             self.kw = self.build_keyword(sku_path, to_file=kw_path)
             self.data_process(model_train_file)
             self.fast = self.train(model_train_file, model_test_file)

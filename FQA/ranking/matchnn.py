@@ -23,7 +23,7 @@ class BertModelTrain(nn.Module):
     def __init__(self):
         super(BertModelTrain, self).__init__()
         self.bert = BertForSequenceClassification.from_pretrained(
-            os.fspath(root_path / 'lib/bert'), num_labels=2)
+            os.fspath(root_path / 'lib/roberta'), num_labels=2)
         self.device = torch.device("cuda") if is_cuda else torch.device("cpu")
         for param in self.bert.parameters():
             param.requires_grad = True
@@ -43,7 +43,7 @@ class BertModelPredict(nn.Module):
     """
     def __init__(self):
         super(BertModelPredict, self).__init__()
-        config = BertConfig.from_pretrained(os.fspath(root_path / "lib/bert/config.json"))
+        config = BertConfig.from_pretrained(os.fspath(root_path / "lib/roberta/config.json"))
         self.bert = BertForSequenceClassification(config)
         self.device = torch.device("cuda") if is_cuda else torch.device("cpu")
     
@@ -60,7 +60,7 @@ class MatchingNN(object):
     """
     def __init__(self,
                  model_path = os.fspath(root_path / 'model/ranking/best.pth.tar'),
-                 vocab_path = os.fspath(root_path / 'lib/bert/vocab.txt'),
+                 vocab_path = os.fspath(root_path / 'lib/roberta/vocab.txt'),
                  data_path = os.fspath(root_path / 'data/ranking/train.csv'),
                  is_cuda = is_cuda,
                  max_sequence_length = max_sequence_length):

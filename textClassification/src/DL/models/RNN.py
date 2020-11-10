@@ -11,8 +11,8 @@ class Model(nn.Module):
                             bidirectional=True, batch_first=True, dropout=config.dropout)
         self.fc = nn.Linear(config.hidden_size * 2, config.num_classes)
     
-    def forward(self, x):
+    def forward(self, x): # x (train, mask, tokens) 这里只需要x[0] train
         out = self.embedding(x[0]) # [batch_size, seq_len, embedding] = [128, 32, 300]
-        out, _ = self.lstm(out)
-        out = self.fc(out[:, -1, :])
+        out, _ = self.lstm(out) # batch_size, seq_len, hidden_size.     
+        out = self.fc(out[:, -1, :]) # 取最后一个位置 作为句向量
         return out

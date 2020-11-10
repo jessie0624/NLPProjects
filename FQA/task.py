@@ -38,15 +38,18 @@ def retrieve(k):
 
 
 def rank():
-    retrieved = pd.read_csv(os.fspath(Path(config.result_path / 'retrieved.csv')))
+    # retrieved = pd.read_csv(os.fspath(Path(config.result_path / 'retrieved.csv')))
     ranker = RANK(do_train=False)
-    ranked = pd.DataFrame()
-    ranked['question1'] = retrieved['query']
-    ranked['question2'] = retrieved['retrieved']
-    rank_scores = ranker.predict(ranker.generate_feature(ranked))
+    # ranked = pd.DataFrame()
+    # ranked['question1'] = retrieved['query']
+    # ranked['question2'] = retrieved['retrieved']
+    # ranked.to_csv(os.fspath(Path(config.result_path / 'ranked.csv')),index=False)
+    ranked = pd.read_csv(os.fspath(Path(config.result_path / 'ranked.csv')))
+    rank_scores = ranker.predict(ranker.generate_feature(ranked, False)) # 2190
+    print(rank_scores.shape) 
     ranked['rank_score'] = rank_scores 
-    ranked.to_csv('result/ranked.csv', index=False)
+    ranked.to_csv('result/ranked-ret.csv', index=False)
 
 if __name__ == "__main__":
-    retrieve(5)
+    # retrieve(5)
     rank()

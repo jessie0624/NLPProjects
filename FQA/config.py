@@ -55,7 +55,7 @@ rank_path.mkdir(parents=True, exist_ok=True)
 # Intention fasttext
 ft_path = model_path / "intention" /"fasttext"
 # Retrival embedding
-w2v_path = model_path / "retrieval" / "word2vec"
+w2v_path = model_path / "retrieval" / "word2vec15"
 
 # HNSW parameters
 ef_construction = 3000

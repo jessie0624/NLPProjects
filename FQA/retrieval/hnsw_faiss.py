@@ -37,17 +37,19 @@ def wam(sentence, w2v_model):
     # logger.info("w2v_model missing word {}, valid word {}".format(miss_count, valid_count))
     return np.mean(np.array(arr), axis=0).reshape(1, -1)
 
-def recall_at_k(actual, predicted, topk):
-    sum_recall = 0.0
-    num_users = len(predicted)
-    true_users = 0
-    for i in range(num_users):
-        act_set = set(actual[i])
-        pred_set = set(predicted[i][:topk])
-        if len(act_set) != 0:
-            sum_recall += len(act_set & pred_set) / float(len(act_set)) #也是命中个数 除以 ground-truth 的个数 求和后再除以用户个数。
-            true_users += 1
-    return sum_recall / true_users
+def recall_topk(y_true, y_pred, num=3):
+    """
+    y_true: [0, 1, 2, 3]
+    y_pred: [[0,1, 11], [11,1,2]]
+    """
+    if len(y_pred[0]) < num:
+        print('error not enough pred')
+        return -1
+    if len(y_pred[0]) > num:
+        y_pred = [i[:num] for i in y_pred]
+    total_item = len(y_true)
+    ret = [1.0   if y_true[i] in y_pred[i] else 0.0 for i in range(total_item) ]
+    return sum(ret)/total_item
 
 class HNSW(object):
     def __init__(self, 
@@ -101,7 +103,8 @@ class HNSW(object):
         # print(D)
         for i in range(nq):
             print(self.data.iloc[i]['custom'], self.data.iloc[I[i][0]]['custom'], D[i][0])
-        recall_at_topk = recall_at_k(np.arange(nq).reshape(-1, 1), I, topk)
+        recall_at_topk = recall_topk(np.arange(nq), I, topk)
+        # recall_at_topk = recall_topk(np.arange(nq).reshape(-1, 1), I, topk)
         # logger.info("\t %7.3f ms per query, R@1 %.4f, missing rate %.4f" % (
         #     (t1 - t0) * 1000.0 / nq, recall_at_1, missing_rate))
         logger.info("recall_at_{}: {}".format(topk, recall_at_topk))

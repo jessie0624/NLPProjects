@@ -194,9 +194,9 @@ class TextSimilarity(object):
             "fast_eucl":     self.tokenSimilarity(str1, str2, method='fast', sim='eucl'),
             "fast_pearson":  self.tokenSimilarity(str1, str2, method='fast', sim='pearson'),
             "fast_wmd":      self.tokenSimilarity(str1, str2, method='fast', sim='wmd'),
-            "tfidf_cos":     self.tokenSimilarity(str1, str2, method='tfidf', sim='cos'),
-            "tfidf_eucl":    self.tokenSimilarity(str1, str2, method='tfidf', sim='eucl'),
-            "tfidf_pearson": self.tokenSimilarity(str1, str2, method='tfidf', sim='pearson')
+            # "tfidf_cos":     self.tokenSimilarity(str1, str2, method='tfidf', sim='cos'),
+            # "tfidf_eucl":    self.tokenSimilarity(str1, str2, method='tfidf', sim='eucl'),
+            # "tfidf_pearson": self.tokenSimilarity(str1, str2, method='tfidf', sim='pearson')
         }
 
 

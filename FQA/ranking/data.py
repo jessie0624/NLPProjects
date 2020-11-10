@@ -32,13 +32,13 @@ class DataProcessForSentence(Dataset):
             - seqs, seq_masks, labels
         """
         df = pd.read_csv(file).dropna()#, sep='\t', header=None, names=['question1', 'question2', 'label']).dropna(how='any')
-        df['question1'] = df['question1'].apply(lambda x: "".join(str(x).split()))
-        df['question2'] = df['question2'].apply(lambda x: "".join(str(x).split()))
-        labels = df['target'].astype('int8').values 
+        df['text_a'] = df['text_a'].apply(lambda x: "".join(str(x).split()))
+        df['text_b'] = df['text_b'].apply(lambda x: "".join(str(x).split()))
+        labels = df['labels'].astype('int8').values 
          
         # 切词
-        tokens_seq_1 = list(map(self.bert_tokenizer.tokenize, df['question1'].values))
-        tokens_seq_2 = list(map(self.bert_tokenizer.tokenize, df['question2'].values))
+        tokens_seq_1 = list(map(self.bert_tokenizer.tokenize, df['text_a'].values))
+        tokens_seq_2 = list(map(self.bert_tokenizer.tokenize, df['text_b'].values))
 
         # 获取定长序列及其mask
         result = list(map(self.trunate_and_pad, tokens_seq_1, tokens_seq_2))

@@ -42,7 +42,7 @@ class Models(object):
         self.bert = self.bert.to(config.device)
         self.ml_data = MLData(debug_mode=True)
         if feature_engineer:
-            self.model = lgb.LGBMClassifier(objective="nulticlass",
+            self.model = lgb.LGBMClassifier(objective="multiclass",
                                             n_jobs=10,
                                             num_class=33,
                                             num_leaves=30,
