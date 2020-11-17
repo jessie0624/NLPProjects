@@ -2,8 +2,7 @@
 @DESC: 该模块是实现基于句向量的HNSW的召回
 
 句向量的训练方法有： 
-- TFIDF + W2V 的句向量
-- WAM 的W2V的句向量
+- SIF + W2V w/o 去除主成分
 """
 import os, sys 
 import pandas as pd
@@ -14,7 +13,7 @@ import time
 sys.path.append('..')
 import config
 from utils.jiebaSegment import *
-from sentenceSimilarity import SentenceSimilarity, HNSW
+from sentenceSimilarity import SentenceSimilarity, HNSW, SIF 
 import argparse
 from typing import List 
 import operator
@@ -26,7 +25,7 @@ def read_corpus():
     qList = []
     qList_kw = [] #问题的关键词列表
     aList = []
-    data = pd.read_csv(config.clean_data3)[:100000] #取前100000做demo
+    data = pd.read_csv(config.clean_data)[:100000] #取前100000做demo
     data_ls = np.array(data).tolist()
     for t in data_ls:
         qList.append(str(t[0]))
@@ -34,23 +33,23 @@ def read_corpus():
         aList.append(str(t[1]))
     return data, qList_kw, qList, aList
 
+
 if __name__ == '__main__':
     # 设置外部词
     parser = argparse.ArgumentParser(description="tmodel1 caculate retrieval")                           
     parser.add_argument('--eval', '-e', default=True) 
     parser.add_argument('--model', '-m', default='w2v', help='only support w2v')
-    parser.add_argument('--tfidf_weight', '-t', default=True)
     args = parser.parse_args() 
     eval_flag, model_type = args.eval, args.model
-    tfidf_weight = args.tfidf_weight
     seg = Seg()
     seg.load_userdict(os.fspath(config.user_dict))
     # 读取数据
     data, List_kw, questionList, answerList = read_corpus()
     # 初始化模型
     # ss = SentenceSimilarity(seg)
-    ss = HNSW(seg, tfidf_weight) # True 
-    ss.set_sentences(questionList)
+    ss = SIF(seg)
+    # ss.set_sentences(questionList, False)
+    ss.set_sentences(questionList, True)
     ss.word2vec()
     ss.build_hnsw() #得到index
     if eval_flag:
@@ -59,10 +58,10 @@ if __name__ == '__main__':
         for index in wrong_ret:
             print(questionList[index])
             print([questionList[val] for val in wrong_ret[index]])
-    while True:
-        sent1 = input("input sent1:")
-        sent2 = input("input sent2:")
-        ss.cossim(sent1, sent2)
+    # while True:
+    #     sent1 = input("input sent1:")
+    #     sent2 = input("input sent2:")
+    #     ss.cossim(sent1, sent2)
 
     # while True:
     #     question = input("请输入问题(q退出): ")

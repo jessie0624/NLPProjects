@@ -23,7 +23,7 @@ class Seg(object):
             self.stopwords.add(line)
         file_obj.close()
 
-    def cut(self, sentence, stopword= True, cut_all = False):
+    def cut(self, sentence, stopword=True, cut_all = False):
         seg_list = jieba.cut(sentence, cut_all)
         results = []
         for seg in seg_list:

@@ -22,7 +22,7 @@ def read_corpus():
     qList = []
     qList_kw = [] #问题的关键词列表
     aList = []
-    data = pd.read_csv(config.retrieval_data)[:100000] #取前100000做demo
+    data = pd.read_csv(config.retrieval_data)[:50000] #取前100000做demo
     data_ls = np.array(data).tolist()
     for t in data_ls:
         qList.append(str(t[1]))
@@ -120,6 +120,7 @@ if __name__ == '__main__':
             print(que, [questionList[i] for i in wrong_index[que]])
         print("recall result:", recall)
     else:
+
         while True:
             question = input("请输入问题(q退出): ")
             time1 = time.time()

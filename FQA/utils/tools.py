@@ -73,3 +73,53 @@ def clean_str(string):
     # string = re.sub(r"\)", " \) ", string)
     # string = re.sub(r"\?", " \? ", string)
     return string.strip()
+
+def clean(sent, keyword_sent_only=False, sep='['):
+    """
+    @desc: 过滤无用符号，并对[SEP]等分割符号，假如前后空格，避免影响分词结果。
+    @param:
+        - sent: 句子
+        - sep: 分隔符是以 [SEP] 
+    @return: string 清洗后的句子
+    """                        
+    sent = re.sub(r"[\s+\.\!\/_,$%^*(+\"\')]+|[+——()?【】“”！，。？、~@#￥%……&*（）]+",
+                  "", sent)
+    
+    i = 0
+    tmp = []
+    while i < len(sent):
+        if sent[i] != sep:
+            tmp.append(sent[i])
+            i += 1
+        else:
+            tmp.append(sent[i: i+5])
+            i += 5
+    return " ".join(tmp)
+
+# def build_keyword(sku_path=config.ware_path, to_file=config.keyword_path, data_path=config.train_path):
+#     """
+#     @desc: 构建业务咨询相关关键词,并保存(读取语料中的名词和提供的sku)
+#     @param:
+#         - sku_path: sku文件路径
+#         - to_file: 关键词保存路径
+#     @return: 关键词list
+#     # """
+    # logger.info("Building keywords")
+    # if to_file.exists():
+    #     return set(to_file.open(mode='r').read().strip().split('\n'))
+    
+    # tokens = []
+    # data = pd.read_csv(data_path)
+    # tokens = data["custom"].dropna().apply(lambda x: [
+    #     token for token, pos in pseg.cut(x) if pos in ['n', 'vn', 'nz']
+    # ])
+    # key_words = set([tk for idx, sample in tokens.iteritems() for tk in sample if len(tk) > 1])
+    # logger.info("key words build.")
+    # lines = sku_path.open(mode='r').read().strip().split('\n')
+    # key_words |= set([item.strip().split('\t')[1] for item in lines[1:]])
+    # logger.info("Sku words merged.")
+    # if to_file is not None:
+    #     with open(to_file, "w") as wf:
+    #         for item in key_words:
+    #             wf.write(item + '\n')
+    # return key_words

@@ -20,12 +20,12 @@ def read_corpus():
     qList = []
     qList_kw = [] #问题的关键词列表
     aList = []
-    data = pd.read_csv(config.retrieval_data)[:100000] #取前1000做demo
+    data = pd.read_csv(config.clean_data3)[:100000] #取前1000做demo
     data_ls = np.array(data).tolist()
     for t in data_ls:
-        qList.append(str(t[1]))
-        qList_kw.append(seg.cut(str(t[1]))) # 去除停用词以后的
-        aList.append(str(t[2]))
+        qList.append(str(t[0]))
+        qList_kw.append(seg.cut(str(t[0]))) # 去除停用词以后的
+        aList.append(str(t[1]))
     return data, qList_kw, qList, aList
 
 
@@ -40,7 +40,7 @@ def plot_words(wordList):
 if __name__ == '__main__':
     # 设置外部词
     parser = argparse.ArgumentParser(description="tmodel1 caculate retrieval")                           
-    parser.add_argument('--eval', '-e', default=False) 
+    parser.add_argument('--eval', '-e', default=True) 
     parser.add_argument('--model', '-m', default='tfidf', help='only support tfidf, lsi, lda')
     args = parser.parse_args() 
     eval_flag, model_type = args.eval, args.model
@@ -60,22 +60,25 @@ if __name__ == '__main__':
     ss.create_sim_index()
     if eval_flag:
         ## evaluate: 
-        eval_questions = list(data.iloc[:1000]['custom'])
-        y_pred = ss.get_recall_result(eval_questions, 10)
-        recall, wrong_index = ss.recall_topk(y_pred, list(range(1000)), 10)
+        eval_questions = list(data.iloc[1000:2000]['title'])
+        y_pred, scores,top_3 = ss.get_recall_result(eval_questions, 10)
+        recall, wrong_index = ss.recall_topk(y_pred, list(range(1000,2000)), 10)
         for que in wrong_index:
-            print(que, [questionList[i] for i in wrong_index[que]])
+            print(questionList[que], [questionList[i] for i in wrong_index[que]])
         print("recall result:", recall)
-    else:
-        while True:
-            question = input("请输入问题(q退出): ")
-            if question == 'q':
-                break
-            time1 = time.time()
-            question_k = ss.similarity_k(question, 5)
-            print("亲，我们给您找到的答案是： {}".format(answerList[question_k[0][0]]))
-            for idx, score in zip(*question_k):
-                print("same questions： {},                score： {}".format(questionList[idx], score))
-            time2 = time.time()
-            cost = time2 - time1
-            print('Time cost: {} s'.format(cost))
+        print("recall scores:", np.average(scores))
+        print("recall top3:", np.average(top_3))
+    # else:
+    while True:
+        # while True:
+        question = input("请输入问题(q退出): ")
+        if question == 'q':
+            break
+        time1 = time.time()
+        question_k = ss.similarity_k(question, 5)
+        print("亲，我们给您找到的答案是： {}".format(answerList[question_k[0][0]]))
+        for idx, score in zip(*question_k):
+            print("same questions： {},                score： {}".format(questionList[idx], score))
+        time2 = time.time()
+        cost = time2 - time1
+        print('Time cost: {} s'.format(cost))

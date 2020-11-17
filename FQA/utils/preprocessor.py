@@ -1,3 +1,18 @@
+"""
+@DECS: 该文件是从原始的chat.txt 里面 将用户与客服的对话 进行合并
+有时候 用户一个问题 客服一个回答，有时候 用户N个问题，客服几个回答。
+针对上述情况，进行问题-答复的 组成 one vs one pair。 构建一个 customer_question,  assistance-reply 的对。
+
+整个沟通过程中 有许多特殊字符，表情符号，网址，订单号，金额等信息，所以需要进行统一替换，不然脏数据太多。
+
+raw_train.txt 总共有20562086行。   pair_data/train.csv 总共有259707行，总共有这么多对话。
+raw_dev.txt 总共有1063行。         pair_data/dev.csv  总共有402行。
+raw_test.txt 总共有 994行。        pair_data/test.csv 总共有348行。 
+
+merge 之后的数据 pair_data/all.csv  总共有260451行。
+这里train-test-dev区分的不够合理，可以组合以后重新分配一下。
+"""
+
 import logging
 import re 
 import sys
@@ -7,11 +22,14 @@ import logging
 import numpy as np 
 import pandas as pd 
 from typing import List 
+sys.path.append("..")
 import config 
 from config import data_path, dev_raw, root_path, sep, test_raw, train_raw
 
+from utils.tools import create_logger
+# logger = logging.getLogger(__name__)
+logger = create_logger(os.fspath(root_path/'log/preprocessor'))
 
-logger = logging.getLogger(__name__)
 def filter_content(sentence):
     """
     特殊字段有：
@@ -51,7 +69,6 @@ def filter_content(sentence):
     sentence = re.sub("α", " ", sentence)
     sentence = re.sub("ε", "[链接x]", sentence)
     sentence = re.sub("γ", "[数字x]", sentence)
-
     return sentence
 
 def read_file(path, is_train=False):
@@ -115,28 +132,6 @@ def read_file(path, is_train=False):
     chat.extend(tmp)
     return chat
 
-
-def clean(sent, sep='['):
-    """
-    @desc: 过滤无用符号，并对[SEP]等分割符号，假如前后空格，避免影响分词结果。
-    @param:
-        - sent: 句子
-        - sep: 分隔符是以 [SEP] 
-    @return: string 清洗后的句子
-    """                        
-    sent = re.sub(r"[\s+\.\!\/_,$%^*(+\"\')]+|[+——()?【】“”！，。？、~@#￥%……&*（）]+",
-                  "", sent)
-    i = 0
-    tmp = []
-    while i < len(sent):
-        if sent[i] != sep:
-            tmp.append(sent[i])
-            i += 1
-        else:
-            tmp.append(sent[i: i+5])
-            i += 5
-    return " ".join(tmp)
-
 def generate_data(filepath, save, to_file, pair):
     """
     @desc: 将read_file的结果进行转化，问答对儿，
@@ -162,24 +157,32 @@ def generate_data(filepath, save, to_file, pair):
                             values='content', aggfunc='first').reset_index()
     data = data[['session_id', 'custom', 'assistance']].dropna().reset_index(drop=True)
     if save:
-        data.to_csv('{}.csv'.format(to_file), index=False) 
+        data.to_csv('{}'.format(to_file), index=False) 
     return data 
 
 if __name__ == "__main__":
-    dev = generate_data(dev_raw,
-                        save=True,
-                        to_file=Path(data_path, "dev"),
-                        pair=True)
-    logger.info("Dev set created")
-    test = generate_data(test_raw,
-                         save=True,
-                         to_file=Path(data_path, "test"),
-                         pair=True)
-    logging.info('test set created.')
-    data = generate_data(train_raw,
-                         save=True,
-                         to_file=Path(data_path, "train_no_blank"),
-                         pair=True)
-    logging.info('training set created.')
+    if not (Path(config.pair_data_test).exists() and  Path(config.pair_data_train).exists() \
+        and  Path(config.pair_data_dev).exists()):
+        dev = generate_data(dev_raw,
+                            save=True,
+                            to_file=config.pair_data_dev,
+                            pair=True)
+        logger.info("Dev set created")
+        test = generate_data(test_raw,
+                            save=True,
+                            to_file=config.pair_data_test,
+                            pair=True)
+        logging.info('test set created.')
+        data = generate_data(train_raw,
+                            save=True,
+                            to_file=config.pair_data_train,
+                            pair=True)
+        logging.info('training set created.')
+    logging.info("merge all data first")
+    df = pd.concat([pd.read_csv(config.pair_data_dev), pd.read_csv(config.pair_data_train), \
+        pd.read_csv(config.pair_data_test)])
+    df.to_csv(config.pair_data_all, index=False)
+    logging.info("merge done")
+
 
     

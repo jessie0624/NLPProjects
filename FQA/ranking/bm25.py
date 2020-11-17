@@ -1,52 +1,68 @@
-"""
-DESC: 训练一个bm25模型 用于排序, 模型保存路径model/ranking/
-"""
-
+import jieba.posseg as pseg 
+import codecs
 import math 
-import os, sys
-from collections import Counter  
-import csv  
-import jieba 
-import jieba.posseg as pseg  
-import numpy as np               
-import pandas as pd
+from collections import Counter 
+from gensim import corpora
+from gensim.summarization import bm25
+import pandas as pd 
+import numpy as np 
 import joblib
 from pathlib import Path
-import logging
-from six import iteritems 
+import os, sys, re 
 sys.path.append("..")
 import config 
 from config import root_path, rank_path,  ranking_train, stop_words_path
 from utils.tools import create_logger
-# logger = logging.getLogger(__name__)
+from utils.jiebaSegment import *
+
 logger = create_logger(os.fspath(root_path/'log/ranking_bm25'))
 class Corpus(object):
     """
     返回corpus list, type : List[List]
     """
     def __init__(self, train_path=ranking_train):
-        self.data = pd.read_csv(os.fspath(train_path))#, sep='\t', header=None,
-                # names=['question1', 'question2', 'target'])
-        self.corpus = list(self.data['question2'].apply(lambda x: jieba.lcut(str(x))))
+        self.seg_obj = Seg()
+        # self.seg_obj.load_userdict(os.fspath(config.user_dict))
+        # 结巴分词后的停用词词性[标点符号，连词，助词，副词，介词，时语素，的，数词，方位词，代词]
+        self.stop_flag = ['x', 'c', 'u', 'd', 'p', 't', 'uj', 'm', 'f', 'r']
+        if not Path(rank_path/"bm25_corpus.txt").exists():
+            self.data = pd.read_csv(os.fspath(train_path))
+            # self.data['len_b'] = self.data['text_b'].apply(lambda x: self.tokenization(str(x)))
+            # self.data[self.data['len_b']>0].to_csv(os.fspath(train_path), index=False)
+            self.corpus = list(self.data['text_b'].apply(lambda x: self.tokenization(str(x))))
+            self.save_corpus()
+        else:
+            self.corpus = self.load_corpus()
+            print('loading done')
+
+    def tokenization(self, text):
+        result = []
+        words = pseg.cut(text)
+        for word, flag in words:
+            if flag not in self.stop_flag and word not in self.seg_obj.stopwords:
+                result.append(word)
+        return result 
+    
+    def save_corpus(self):
+        with open(Path(rank_path/"bm25_corpus.txt"), 'w') as wf:
+            for item in self.corpus:
+                for word in item:
+                    wf.write(word + ' ')
+                wf.write('\n')                
+
+    def load_corpus(self):
+        ret = []
+        with open(Path(rank_path/"bm25_corpus.txt"), 'r') as rf:
+            for line in rf.readlines():
+                cur = line.strip().split(' ')
+                ret.append(cur)
+        return ret 
 
 class BM25(object):
-    """
-    score(q, d) = \sum(i=1-n) Wi*R(qi, d)
-    Wi = log((N-nqi+0.5)/(nqi + 0.5))
-    R(qi,d) = (fi*(k1+1 / fi+K))(qfi*(k2+1 / qfi+k2))
-    K = k1(1-d+d*(dl/avgdl))
-    """
     def __init__(self, do_train=True, save_path=rank_path):
-        """
-        @param:
-            - corpus: List[List[]]
-            - do_train: True  runing trainning
-        """
-        self.stopwords = self.load_stop_word()
-        
+        self.corpus_obj = Corpus()
+        self.corpus = self.corpus_obj.corpus
         if do_train:
-            self.corpus_obj = Corpus()
-            self.corpus = self.corpus_obj.corpus
             self.initialize()
             self.saver(save_path)
         else:
@@ -61,10 +77,6 @@ class BM25(object):
         self.nq = Counter([word for doc in self.tf_list for word in doc])
         # 单词的逆文档频率
         self.idf = {word: math.log(self.corpus_size - freq + 0.5) - math.log(freq + 0.5) for word, freq in self.nq.items()}
-    
-    def load_stop_word(self):
-            return stop_words_path.open(mode='r',encoding='utf-8').read(\
-            ).strip().split('\n')
 
     def saver(self, save_path):
         print('save model')
@@ -80,14 +92,14 @@ class BM25(object):
         q: query
         d: document
         """ 
-        stop_flag = ['x', 'c', 'u', 'd', 'p', 't', 'uj', 'm', 'f', 'r']
-        words = pseg.cut(query)
+        # words = pseg.cut(query)
+        words = self.corpus_obj.tokenization(query)
         fi = {}
         qfi = {}
-        for word, flag in words:
-            if flag not in stop_flag and word not in self.stopwords:
-                fi[word] = doc.count(word)
-                qfi[word] = query.count(word)
+        for word in words:
+            fi[word] = doc.count(word)
+            qfi[word] = query.count(word)
+
         K = k1 * (1 - b + b * (len(doc)/self.avgdl))
         ri = {}
         for key in fi:
@@ -96,7 +108,17 @@ class BM25(object):
         for key in ri:
             score += self.idf.get(key, 20.0) * ri[key]
         return score
-
+    
+    def test(self):
+        data = pd.read_csv(os.fspath(ranking_train))
+        data['score'] = data.apply(lambda x: self.get_score(str(x['text_a']), str(x['text_b'])), axis=1)
+        data.to_csv(os.fspath(rank_path/"bm25_test.csv"), index=False)
+        score = data['score'].values
+        labels = data['labels'].values
+    
+        pccs = np.corrcoef(score, labels)
+        print('pccs: ', pccs)
 
 if __name__ == "__main__":
     bm25 = BM25(do_train=True)
+    bm25.test()

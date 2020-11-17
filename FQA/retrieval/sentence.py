@@ -5,15 +5,16 @@ from utils.jiebaSegment import Seg
 
 class Sentence(object):
 
-    def __init__(self, sentence, seg, id=0):
+    def __init__(self, sentence, seg, id=0, stopword=True):
         self.id = id
         self.origin_sentence = sentence
+        self.stopword=stopword
         self.cuted_sentence = self.cut(seg)
 
     # 对句子分词
     def cut(self, seg):
         # return seg.cut_for_search(self.origin_sentence)
-        return seg.cut(self.origin_sentence)
+        return seg.cut(self.origin_sentence, stopword=self.stopword)
 
     # 获取切词后的词列表
     def get_cuted_sentence(self):

@@ -11,8 +11,8 @@ from matchnn import BertModelTrain
 from transformers.optimization import AdamW
 sys.path.append('..')
 from utils.tools import create_logger
-from config import is_cuda, root_path, rank_path, ranking_train, \
-    ranking_test, ranking_dev, max_sequence_length
+from config import is_cuda, root_path, rank_path, \
+    ranking_bert_train, ranking_bert_dev, max_sequence_length
 
 # logger = logging.getLogger(__name__)
 logger = create_logger(os.fspath(root_path/'log/train_matchnn'))
@@ -23,7 +23,7 @@ if is_cuda:
     torch.cuda.manual_seed_all(seed)
 
 def main(train_file, dev_file, target_dir, \
-         epochs=10, batch_size=32, lr=2e-05, \
+         epochs=10, batch_size=8, lr=2e-05, \
          patience=3, max_grad_norm=10.0, checkpoint=None):
     
     bert_tokenizer = BertTokenizer.from_pretrained(os.fspath(root_path \
@@ -65,7 +65,7 @@ def main(train_file, dev_file, target_dir, \
 
     epochs_count, train_losses, valid_losses = [], [], []
 
-    if checkpoint:
+    if os.path.exists(checkpoint):
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint["epoch"] + 1
         best_score = checkpoint["best_score"]
@@ -121,4 +121,4 @@ def main(train_file, dev_file, target_dir, \
 
 
 if __name__ == '__main__':
-    main(ranking_train, ranking_dev, rank_path, checkpoint=os.fspath(rank_path/"best.pth.tar"))
+    main(ranking_bert_train, ranking_bert_dev, rank_path, checkpoint=os.fspath(rank_path/"best.pth.tar"))

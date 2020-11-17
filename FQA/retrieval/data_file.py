@@ -23,44 +23,71 @@ import config
 import pandas as pd 
 import numpy as np 
 from utils.jiebaSegment import *
-if not config.retrieval_data.exists():
-    data = pd.read_csv(config.pair_data_all)
-    print(data.shape) # 260450
-    # 去重
-    data.drop_duplicates(subset=['custom'], keep='first', inplace=True)
-    print(data.shape) # 174961
-    # 去短
-    # data = pd.read_csv(config.retrieval_data)
-    data['flag'] = data['custom'].apply(lambda x: True if len(str(x))>5 else False)
-    data[data['flag']==True][['session_id','custom', 'assistance']].to_csv(config.retrieval_data, index=False)
+# if not config.retrieval_data.exists():
+#     data = pd.read_csv(config.pair_data_all)
+#     print(data.shape) # 260450
+#     # 去重
+#     data.drop_duplicates(subset=['custom'], keep='first', inplace=True)
+#     print(data.shape) # 174961
+#     # 去短
+#     # data = pd.read_csv(config.retrieval_data)
+#     data['flag'] = data['custom'].apply(lambda x: True if len(str(x))>5 else False)
+#     data[data['flag']==True][['session_id','custom', 'assistance']].to_csv(config.retrieval_data, index=False)
 
-# 清除冗余问题
-data = pd.read_csv(config.retrieval_data)   
-seg = Seg()
-seg.load_userdict(os.fspath(config.user_dict))
+# # 清除冗余问题
+# data = pd.read_csv(config.retrieval_data)   
+# seg = Seg()
+# seg.load_userdict(os.fspath(config.user_dict))
 
-def clean(x):
-    import re 
-    x = re.sub("[,，\.。!]", "",x)
-    x = re.sub("好","",x)
-    x = re.sub("谢谢","",x)
-    x = re.sub("[哦嗯啊]","",x)
-    x = re.sub("多谢","", x)
-    x = re.sub("哈", "", x)
-    x = re.sub("\[SEP\]","",x)
-    x = re.sub("\[数字x\]","", x)
-    x = re.sub('[a-zA-Z0-9]',"",x)
+# def clean(x):
+#     import re 
+#     x = re.sub("[,，\.。!]", "",x)
+#     x = re.sub("好","",x)
+#     x = re.sub("谢谢","",x)
+#     x = re.sub("[哦嗯啊]","",x)
+#     x = re.sub("多谢","", x)
+#     x = re.sub("哈", "", x)
+#     x = re.sub("\[SEP\]","",x)
+#     x = re.sub("\[数字x\]","", x)
+#     x = re.sub('[a-zA-Z0-9]',"",x)
     
-    return x.strip()
+#     return x.strip()
 
-data['clean_custom'] = data['custom'].apply(lambda x: "".join(seg.cut(clean(x))))
-data['clean_custom_flag'] = data['clean_custom'].apply(lambda x: True if len(x.strip())==0 else False)
-print(data[data['clean_custom_flag']==True])
-data[data['clean_custom_flag']==False][['session_id','custom', 'assistance']].to_csv(config.retrieval_data, index=False)
+# data['clean_custom'] = data['custom'].apply(lambda x: "".join(seg.cut(clean(x))))
+# data['clean_custom_flag'] = data['clean_custom'].apply(lambda x: True if len(x.strip())==0 else False)
+# print(data[data['clean_custom_flag']==True])
+# data[data['clean_custom_flag']==False][['session_id','custom', 'assistance']].to_csv(config.retrieval_data, index=False)
 
+
+# self.texts = self.get_cuted_sentences() # jieba分词后的list[[],[],]
+# # 删除低频词
+# self.frequency = defaultdict(int)
+# for text in self.texts:
+#     for token in text:
+#         self.frequency[token] += 1
+# self.texts = [[token for token in text if self.frequency[token] > min_frequency]\
+#     for text in self.texts]
 # data = pd.read_csv(config.retrieval_data) 
-# print(data.iloc[817])
-# data=data[data.index!=817]
-# # data.to_csv(config.retrieval_data, index=False)
+# # print(data.iloc[817])
+# # data=data[data.index!=817]
+# # # data.to_csv(config.retrieval_data, index=False)
+# data['custom_len'] = data['custom'].apply(lambda x: len(x))
+# print(data['custom_len'].describe())
+# print(data.shape) # 161610 ->161087 ->160993 ->160953 ->159388去除短的问句后 只剩下161k的数据
 
-print(data.shape) # 161610 ->161087 ->160993 ->160953 ->159388去除短的问句后 只剩下161k的数据
+# data = pd.read_csv(config.clean_data, sep='\t') 
+# print(data[data['is_best']==1][:10])
+# data = data[data['is_best']==1]
+# print(data.shape)
+# data.drop_duplicates(subset=['best_title'], keep='first', inplace=True)
+# data.to_csv(config.clean_data, index=False)
+# print(data.shape)
+# total 239k 问题。
+data = pd.read_csv(config.clean_data3)   
+# seg = Seg()
+# data['len_que'] = data['best_title'].apply(lambda x: "".join(seg.cut(x)))
+# print(data[:10])
+print(data.shape)
+data.drop_duplicates(subset=['title'], keep='first', inplace=True)
+print(data.shape)
+
