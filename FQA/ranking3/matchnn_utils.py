@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score
 
 from sklearn.metrics import precision_score, accuracy_score,recall_score, roc_auc_score
 
+from matchnn import FGM 
 
 def generate_sent_masks(enc_hiddens, source_lengths):
     """
@@ -112,7 +113,8 @@ def validate(model, dataloader):
     epoch_time = time.time() - epoch_start 
     epoch_loss = running_loss / len(dataloader)
     epoch_accuracy = running_accuracy / (len(dataloader.dataset))
-    return epoch_time, epoch_loss, epoch_accuracy, roc_auc_score(all_labels, all_prob)
+    # epoch_f1 = epoch_accuracy 
+    return epoch_time, epoch_loss, epoch_accuracy, roc_auc_score(all_labels, all_prob),
 
 def test(model, dataloader):
     """
@@ -143,7 +145,7 @@ def test(model, dataloader):
     accuracy /= (len(dataloader.dataset))
     return batch_time, total_time, accuracy, roc_auc_score(all_labels, all_prob)
 
-def train(model, dataloader, optimizer, epoch_number, max_gradient_norm):
+def train(model, dataloader, optimizer, epoch_number, max_gradient_norm, adv_type='fgm'):
     """
     """
     model.train()
@@ -153,6 +155,10 @@ def train(model, dataloader, optimizer, epoch_number, max_gradient_norm):
     running_loss, correct_preds = 0.0, 0
     tqdm_batch_iterator = tqdm(dataloader)
     
+    # fgm = None
+    # if adv_type == 'fgm':
+    #     fgm = FGM(model)
+
     for batch_index, (batch_seqs, batch_seq_masks, batch_seq_segments, \
         batch_labels) in enumerate(tqdm_batch_iterator):
         
@@ -165,6 +171,13 @@ def train(model, dataloader, optimizer, epoch_number, max_gradient_norm):
         optimizer.zero_grad()
         loss, logits, probabilities = model(seqs, masks, segments, labels)
         loss.backward()
+
+        # if adv_type == 'fgm':
+        #     fgm.attack()  ##对抗训练
+        #     loss_adv = model(**inputs)[0]
+        #     loss_adv.backward()
+        #     fgm.restore()
+
         nn.utils.clip_grad_norm_(model.parameters(), max_gradient_norm)
         optimizer.step()
         batch_time_avg += time.time() - batch_start

@@ -22,7 +22,7 @@ class Corpus(object):
     """
     def __init__(self, train_path=ranking_train):
         self.seg_obj = Seg()
-        # self.seg_obj.load_userdict(os.fspath(config.user_dict))
+        self.seg_obj.load_userdict(os.fspath(config.user_dict))
         # 结巴分词后的停用词词性[标点符号，连词，助词，副词，介词，时语素，的，数词，方位词，代词]
         self.stop_flag = ['x', 'c', 'u', 'd', 'p', 't', 'uj', 'm', 'f', 'r']
         if not Path(rank_path/"bm25_corpus.txt").exists():
@@ -115,7 +115,7 @@ class BM25(object):
         data.to_csv(os.fspath(rank_path/"bm25_test.csv"), index=False)
         score = data['score'].values
         labels = data['labels'].values
-    
+
         pccs = np.corrcoef(score, labels)
         print('pccs: ', pccs)
 

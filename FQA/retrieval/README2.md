@@ -57,3 +57,20 @@ W2V + SIF w/o StopWords: top 10 recall 99.8%, top3 disc: 0.00369, total disc: 0.
 
 W2V + SIF + StopWords: top10 recall 99.8%, top3 disc: 0.0011,  total disc: 0.00167
                      （top20: 100%, top3 0.0016, total 0.0026）
+
+问题：训练语言模型后，要评估模型好坏。
+- 评估语言模型训练的好坏。 在对话数据集上训练语言模型时，dim=300，得出的大部分相似度都很高。 怀疑过拟合。降低维度到200, 相似度有了明显的差异。欧式距离。数据集比较小的时候，维度可以不用很高。
+
+问题：SIF权重时 是否需要去除stopwords。
+- 数据集比较小的时候，保留stopwords效果好。主成分不足够，去除stopwords之后，只剩下几个有代表性的词语，再去除主成分，使得这些有意义的词语的权重都变小，结果反而不好。
+- 数据集比较大的时候去除的效果比较好。因为大数据集中 除了stopwords 还有其他的主成分。
+
+问题：计算召回，查看top10召回的相似度得分，从而选择方法。
+- tfidf: 虽然召回率高，基于词语的，但是整体句子的score比较低。
+- lda: 虽然召回率稍微低于tfidf, 但是top10的召回结果文本相似度score很高。
+- w2v+sif w/o remove stopwords: hnsw 欧式距离 相对来说比较大
+- w2v+sif+remove stopwords: hnsw 欧式距离 相比没有stopwords 要好一些  enable remove topwords
+
+
+
+

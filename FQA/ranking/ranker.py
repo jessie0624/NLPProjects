@@ -54,10 +54,10 @@ params = {
     "min_child_weight":  1,
     "min_child_samples": 5,
     "scale_pos_weight":  1,
-    "max_position":      20,
+    # "max_position":      20,
     "group":             "name:groupId",
-    "metric":            "auc"
-}
+    "metric":            "auc" 
+}  # "auc"
 
 class RANK(object):
     def __init__(self, do_train=True,bert=False, model_path=os.fspath(root_path / "model/ranking/lightgbm_wo_tfidf")):
@@ -66,25 +66,19 @@ class RANK(object):
             self.matchingNN = MatchingNN()
         if do_train:
             logger.info("Training mode")
-            self.train = pd.read_csv(os.fspath(ranking_bert_train))
-                                    # sep='\t',
-                                    # header=None,
-                                    # nrows=10000,
-                                    # names=['question1', 'question2', 'target'])
-            self.data = self.generate_feature(self.train, do_train=do_train, bert=bert)
-            self.columns = [i for i in self.train.columns if 'text' not in i]
+            # self.train = pd.read_csv(os.fspath(ranking_bert_train))
+            # self.data = self.generate_feature(self.train, do_train=do_train, bert=bert)
+            self.data = pd.read_csv(os.fspath(result_path/"gbm_train_data.csv"))
+            # self.columns = [i for i in self.data.columns if 'text' not in i]
             self.trainer()
             self.save(model_path)
         else:
             logger.info("Predicting mode")
-            self.test = pd.read_csv(os.fspath(ranking_bert_dev))
-                                    # sep='\t',
-                                    # header=None,
-                                    # names=['question1', 'question2', 'target'])
-            self.testdata = self.generate_feature(self.test,do_train=do_train, bert=bert)
+            # self.test = pd.read_csv(os.fspath(ranking_bert_dev))
+            # self.testdata = self.generate_feature(self.test,do_train=do_train, bert=bert)
+            self.testdata = pd.read_csv(os.fspath(result_path/"gbm_test_data.csv"))
             self.gbm = joblib.load(model_path)
             self.predict(self.testdata)
-
     
     def generate_feature(self, data, do_train=True, bert=False):
         """
@@ -104,7 +98,6 @@ class RANK(object):
                 print(columns)
                 return data[columns]
 
-
         data = pd.concat([data, pd.DataFrame.from_records(
             data.apply(lambda row: self.ts.generate_all(
                 row['text_a'],
@@ -123,8 +116,11 @@ class RANK(object):
     
     def trainer(self):
         logger.info("Training lightgbm model.")
-        self.gbm = lgb.LGBMRanker(metric='auc')
-        columns = [i for i in self.data.columns if i not in ['text_a', 'text_b', 'labels']]
+        # self.gbm = lgb.LGBMRanker(metric='auc')
+        self.gbm = lgb.LGBMRanker(**params)
+        print(self.gbm.get_params())
+        columns = [i for i in self.data.columns if i not in ['text_a', 'text_b', 'labels', 'w2v_wmd']]
+        self.data.sort_values(by=['text_a'], inplace=True)
         X_train, X_test, y_train, y_test = train_test_split(
                                                     self.data[columns], 
                                                     self.data['labels'],
@@ -132,8 +128,8 @@ class RANK(object):
                                                     random_state=42)
         query_train = [X_train.shape[0]]
         query_val = [X_test.shape[0]]
-        print(query_train)
-        print(query_val)
+        # print(query_train)
+        
         self.gbm.fit(X_train, y_train, 
                      group=query_train, 
                      eval_set=[(X_test, y_test)],
@@ -153,7 +149,7 @@ class RANK(object):
         @return:
             - result[list]: 所有query-candidate对儿的得分
         """
-        columns = [i for i in data.columns if i not in ['text_a', 'text_b', 'labels']]
+        columns = [i for i in data.columns if i not in ['text_a', 'text_b', 'labels','w2v_wmd']]
         result = self.gbm.predict(data[columns])
         print(data.shape, result.shape)
         return result 

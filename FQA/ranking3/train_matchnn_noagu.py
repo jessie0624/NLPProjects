@@ -9,10 +9,16 @@ from matchnn_utils import train, validate
 from transformers import BertTokenizer
 from matchnn import BertModelTrain
 from transformers.optimization import AdamW
+import pandas as pd 
+import csv 
+import itertools
+from sklearn.model_selection import KFold
+from pathlib import Path
+import os, sys, re 
 sys.path.append('..')
+import config 
 from utils.tools import create_logger
-from config import is_cuda, root_path, rank_path, \
-    ranking_bert_train, ranking_bert_dev, max_sequence_length
+from config import is_cuda, root_path, max_sequence_length
 
 # logger = logging.getLogger(__name__)
 logger = create_logger(os.fspath(root_path/'log/train_matchnn'))
@@ -23,15 +29,15 @@ if is_cuda:
     torch.cuda.manual_seed_all(seed)
 
 def main(train_file, dev_file, target_dir, \
-         epochs=10, batch_size=8, lr=2e-05, \
+         epochs=20, batch_size=32, lr=2e-05, \
          patience=3, max_grad_norm=10.0, checkpoint=None):
     
     bert_tokenizer = BertTokenizer.from_pretrained(os.fspath(root_path \
         / 'lib/bert/vocab.txt'), do_lower_case=True)
     device = torch.device("cuda") if is_cuda else torch.device("cpu")
     logger.info(20 * "="+ " preparing for training "+"="*20)
-    if not target_dir.exists():
-        target_dir.mkdir(parents=True, exist_ok=True)
+    # if not target_dir.exists():
+    #     target_dir.mkdir(parents=True, exist_ok=True)
     
     ## Loadding data 
     logger.info("\t * Loading training data ...")
@@ -113,12 +119,69 @@ def main(train_file, dev_file, target_dir, \
                 "epochs_count": epochs_count,
                 "train_losses": train_losses,
                 "valid_losses": valid_losses
-            }, os.fspath(target_dir / str(epoch)+'best.pth.tar'))
+            }, os.fspath(target_dir) +'/'+ str(epoch)+'best.pth.tar')
         
         if patience_counter >= patience:
             logger.info("-> Early stopping: patience limit reached, stopping...")
             break
 
+# def get_fold_data(datas, indexs):
+#     result = []
+#     for index in indexs:
+#         result.append(datas[index])
+#     return result
+
+
+# def write_fold_data(datas, filename):
+#     with open(filename, 'w', newline='', encoding='utf-8') as f:
+#         writer = csv.writer(f, delimiter=",")
+#         writer.writerow(['text_a', 'text_b', 'labels'])
+#         writer.writerows(datas)
+
+
+# def gen_kfold_data(name, out_dir, k=5):
+#     datas = pd.read_csv(os.fspath(name))
+#     datas = datas.values.tolist()
+#     kf = KFold(n_splits=k, shuffle=True, random_state=42)
+#     fold = 0
+#     for train_index, dev_index in kf.split(datas):
+#         train_datas = get_fold_data(datas, train_index)
+#         dev_datas = get_fold_data(datas, dev_index)
+#         train_file = os.path.join(out_dir, 'train.csv')
+#         dev_file = os.path.join(out_dir, 'dev.csv')
+#         write_fold_data(train_datas, train_file)
+#         write_fold_data(dev_datas, dev_file)        
+#         break
+
+def data_agu(old_path, new_path):
+    datas = pd.read_csv(old_path)
+    dfd = datas.copy(deep=True)
+    dfd['text_c'] = dfd['text_a']
+    dfd['text_a'] = dfd['text_b']
+    dfd['text_b'] = dfd['text_c']
+    dfd = dfd[['text_a', 'text_b', 'labels']]
+    ret = pd.concat([datas, dfd])
+    ret.drop_duplicates(inplace=True)
+    ret.to_csv(new_path, index=False)
+    return ret   
 
 if __name__ == '__main__':
-    main(ranking_bert_train, ranking_bert_dev, rank_path, checkpoint=os.fspath(rank_path/"best.pth.tar"))
+    ##　不对train data 增强
+    org_data_path = os.fspath(Path(root_path/"data/ranking"))
+    train_file = os.path.join(org_data_path, 'train_py.csv')
+    dev_file = os.path.join(org_data_path, 'dev.csv')
+
+    Path(root_path / "data" /"ranking3_noagu").mkdir(parents=True, exist_ok=True)
+    Path(root_path / "model" /"ranking3_noagu").mkdir(parents=True, exist_ok=True)
+
+    ranking_bert_train = os.path.join(root_path, 'data','ranking3_noagu', 'train.csv')
+    ranking_bert_dev = os.path.join(root_path, 'data','ranking3_noagu', 'dev.csv')
+    rank_path = os.path.join(root_path, "model","ranking3_noagu")
+
+    # train_data = data_agu(train_file, ranking_bert_train)
+    train_file = pd.read_csv(train_file)
+    train_file.to_csv(ranking_bert_train, index=False)
+    dev = pd.read_csv(dev_file)
+    dev.to_csv(ranking_bert_dev, index=False)
+    # gen_kfold_data(config.raw_file, config.data_ranking_path)
+    main(ranking_bert_train, ranking_bert_dev, rank_path, checkpoint=os.path.join(rank_path,"best.pth.tar"))

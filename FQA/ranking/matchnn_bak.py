@@ -17,40 +17,25 @@ from ranking.data import DataProcessForSentence
 
 tqdm.pandas()
 
-
-bert_config = BertConfig.from_pretrained(os.fspath(root_path / 'lib'/rank_model/"config.json"))
-# bert_tokenizer = BertTokenizer.from_pretrained(self.vocab_path, do_lower_case=True)
-
 class BertModelTrain(nn.Module):
     """
     The base model for training a matching network
     """
-    def __init__(self, n_classes=2):
+    def __init__(self):
         super(BertModelTrain, self).__init__()
-        self.bert_model = BertModel.from_pretrained(os.fspath(root_path / 'lib'/ rank_model))
-        self.classifier = nn.Linear(bert_config.hidden_size * 2, n_classes)
-        
-        self.dropout = nn.Dropout() ## TODO
-
+        self.bert = BertForSequenceClassification.from_pretrained(
+            os.fspath(root_path / 'lib'/ rank_model), num_labels=2)
         self.device = torch.device("cuda") if is_cuda else torch.device("cpu")
-        for param in self.bert_model.parameters():
+        for param in self.bert.parameters():
             param.requires_grad = True
     
     def forward(self, batch_seqs, batch_seq_masks, batch_seq_segments, labels):
-        # loss, logits = self.bert(input_ids = batch_seqs, 
-        #                         attention_mask = batch_seq_masks,
-        #                         token_type_ids = batch_seq_segments,
-        #                         labels = labels)
-        sequence_output, pooler_output, hidden_states = self.bert_model(input_ids=batch_seqs,
-                                                                        attention_mask=batch_seq_masks,
-                                                                        token_type_ids=batch_seq_segments)
-        seq_avg = torch.mean(sequence_output, dim=1)
-        concat_out = torch.cat((seq_avg, pooler_output), dim=1) # 2*hidden_size
-        # TODO 添加分类层
-        # probabilities = nn.functional.softmax(logits, dim=-1)
-        # return loss, logits, probabilities
-        logit = self.classifier(concat_out)
-        return logit
+        loss, logits = self.bert(input_ids = batch_seqs, 
+                                attention_mask = batch_seq_masks,
+                                token_type_ids = batch_seq_segments,
+                                labels = labels)
+        probabilities = nn.functional.softmax(logits, dim=-1)
+        return loss, logits, probabilities
 
 
 class BertModelPredict(nn.Module):

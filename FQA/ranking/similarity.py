@@ -1,41 +1,125 @@
-"""
-Decs: 实现text similarity
-"""
-import logging 
-import os, sys 
-import jieba
 import jieba.posseg as pseg 
-import numpy as np                  
+import codecs
+import math 
+from collections import Counter 
+from gensim import corpora
+from gensim.models import KeyedVectors
+from sklearn.decomposition import TruncatedSVD
+# from gensim.summarization import bm25
 from gensim import corpora, models, similarities
-
+import pandas as pd 
+import numpy as np 
+import joblib
+from pathlib import Path
+from typing import List
+import os, sys, re 
 sys.path.append("..")
 import config 
-from config import rank_path
-# from retrieval.hnsw_faiss import wam 
 from ranking.bm25 import BM25 
-from collections import Counter
-
-logger = logging.getLogger(__name__)
-
-class TextSimilarity(object):
+from config import root_path, rank_path,  ranking_train, stop_words_path
+from utils.tools import create_logger
+from utils.jiebaSegment import *
+logger = create_logger(os.fspath(root_path/'log/ranking_sim'))
+class SentEmbedding():
     def __init__(self):
-        logger.info(" load dictionary...")
+        # super(SentEmbedding, self).__init__()
+        self.dim = 200
+        logger.info("loading dictionary...")
         self.dictionary = corpora.Dictionary.load(os.fspath(rank_path / "ranking.dict"))
-
+        
         logger.info(" load corpus")
         self.corpus = corpora.MmCorpus(os.fspath(rank_path / "ranking.mm"))
 
-        logger.info(" load tfidf")
+        logger.info(" load tfidf/lsi/lda")
         self.tfidf = models.TfidfModel.load(os.fspath(rank_path / "tfidf"))
-  
-        logger.info(" load bm25")
-        self.bm25 = BM25(do_train=False)#.load(rank_path) 
+        self.lsi = models.LsiModel.load(os.fspath(rank_path / "lsi"))
+        self.lda = models.LsiModel.load(os.fspath(rank_path / "lda"))
 
         logger.info(" load word2vec")
         self.w2v_model = models.KeyedVectors.load(os.fspath(rank_path / "w2v"))
 
         logger.info(" load fasttext")
         self.fasttext = models.FastText.load(os.fspath(rank_path / "fast"))
+
+        logger.info(" load sif weight")
+        self.sif_weight = self.load_sif_weight()
+
+    def tokenize(self, str1):
+        seg_obj = Seg()
+        seg_obj.load_userdict(os.fspath(config.stop_words_path))
+        words = seg_obj.cut(str1)
+        # return [" ".join(words), set(words)]
+        return words
+    
+    def remove_pc(self, X, npc, emb_type):
+        file_path = os.fspath(rank_path) + "/svd_"+emb_type + ".txt"
+        pc = np.loadtxt(file_path, delimiter=",")
+        # print(pc.shape)
+        pc = pc.reshape(1, 200)
+        # print(pc)
+
+        if npc == 1:
+            XX = X - X.dot(pc.transpose()) * pc 
+        else:
+            XX = X - X.dot(pc.transpose()).dot(pc)
+        return XX
+    
+    def load_sif_weight(self):
+        sif_weight = dict()
+        with open(config.rank_path/'sif-weight.txt', 'r') as f:
+            for line in f.readlines():
+                ret =line.strip().split()
+                if len(ret) <2: continue
+                sif_weight[ret[0]] = float(ret[1])
+        return sif_weight
+
+    def get_weight(self, sent, weight_type=None):
+        ## 计算权重
+        if not isinstance(sent, List):
+            sent = self.tokenize(sent)
+
+        if weight_type == None:
+            weight = np.array([1.0 for _ in range(len(sent))])  
+        elif weight_type == 'tfidf':
+            tfidf_vec = self.tfidf[sent]
+            vec_dict = dict()
+            for (k, v) in tfidf_vec:
+                vec_dict[k] = v
+            vec = [self.dictionary.token2id[token] if token in self.dictionary.token2id else 'UNK' for token in sent ]
+            weight = np.array([vec_dict[t] if t in vec_dict else 0.0 for t in vec]).reshape(1, -1)
+        elif weight_type == 'sif':
+            weight = np.array([self.sif_weight[word] if word in self.sif_weight else 0.0 for word in sent]).reshape(1, -1)
+        return weight
+
+    def get_embed(self, sent, emb_type='w2v', weight_type=None):
+        sent = self.tokenize(sent)
+        # 获取权重 
+        weight = self.get_weight(sent, weight_type).reshape(1,-1)
+
+        # 获取句子的词嵌入embed
+        if emb_type in ['w2v', 'fasttext']:
+            model = self.w2v_model if emb_type == 'w2v' else self.fasttext
+            # 得到sent_len * dim 矩阵 根据该矩阵可以获取句向量
+            sent_emb = np.array([model.wv.get_vector(word) if word in model.wv.vocab.keys() \
+                else np.random.randn(self.dim) for word in sent]).reshape(-1, self.dim)
+        # elif emb_type in ['tfidf', 'lsi', 'lda']:
+        #     tfidf_vec = self.tfidf[sent]
+        if len(sent) > 0:
+            sent_vec = np.dot(weight, sent_emb)/(len(sent)) # 1*300
+        else:
+            sent_vec = np.random.randn(1, self.dim)
+        
+        if weight_type == 'sif':
+            npc = 1
+            sent_vec = self.remove_pc(sent_vec, npc, emb_type)
+        
+        return sent_vec
+    
+class TextSimilarity(SentEmbedding):
+    def __init__(self):
+        super(TextSimilarity, self).__init__()
+        logger.info(" load bm25")
+        self.bm25 = BM25(do_train=False)#.load(rank_path) 
     
     def lcs(self, str1, str2):
         """
@@ -88,18 +172,6 @@ class TextSimilarity(object):
                         # dp[i-1][j]: 在str2[j]插入一个str1[i],那么此处就相等了 j就自动往后移动位置,i 相对来说就是前一个位置.
         return (m + n - dp[-1][-1]) / (m + n)
 
-    @classmethod
-    def tokenize(cls, str1):
-        """
-        @desc: 返回字符串的分词后的结果 用空格隔开的字符串和集合
-        @param:
-            - str1: 需要分词的子串
-        @return:
-            - List[str, set]
-        """
-        words = [word for word in jieba.cut(str1)]
-        return [" ".join(words), set(words)]
-    
     def JaccardSim(self, str1, str2):
         """
         @desc: 计算Jaccard 相似系数
@@ -109,7 +181,9 @@ class TextSimilarity(object):
         @return:
             - jaccard相似度 len(s1 & s2)/len(s1|s2)
         """
-        set1, set2 = self.tokenize(str1)[1], self.tokenize(str2)[1]
+        set1, set2 = set(self.tokenize(str1)), set(self.tokenize(str2))
+        if len(set1 | set2)==0:
+            return 0.0
         return 1.0 * len(set1 & set2) / len(set1 | set2)
     
     @staticmethod
@@ -129,77 +203,44 @@ class TextSimilarity(object):
         b -= np.average(b)    
         return np.sum(a * b) / (np.sqrt(np.sum(a**2)) * np.sqrt(np.sum(b**2)))
     
-    def tokenSimilarity(self, str1, str2, method='w2v', sim='cos', most_common=False):
-        """
-        @desc: 基于分词求相似度, 默认使用cos_sim余弦相似度, 默认使用前20个最频繁的词项进行计算(wam)
-        @param:
-            - str1
-            - str2
-            - method: 词向量选择 支持w2v, tfidf, fasttext
-            - sim: 相似度方法选择 支持 cos, pearson, eucl
-        @return:
-            - 相似度值
-        """
-        str1, str2 = self.tokenize(str1)[0], self.tokenize(str2)[0]
-        str1_emb, str2_emb, model = None, None, None
-        result = None 
-        # 下面得到的就是针对分词后的str1 和 str2得到他们的embedding. 然后计算wam 沿着句子长度方向进行叠加.
-        if most_common:
-            str1 = " ".join([word[0] for word in Counter(str1.split()).most_common(20)])
-            str2 = " ".join([word[0] for word in Counter(str2.split()).most_common(20)])
-        # 获取emb 和 model
-        if method in ['w2v', 'fast']: # wam
+  
+    def tokenSimilarity(self, str1, str2, method='w2v', weight=None, sim='cos'):
+        
+        str1_emb = self.get_embed(str1, method, weight)
+        str2_emb = self.get_embed(str2, method, weight)
+        
+        if sim == 'cos':
+            result = TextSimilarity.cos_sim(str1_emb, str2_emb)
+        elif sim == 'eucl':
+            result = TextSimilarity.eucl_sim(str1_emb, str2_emb)
+        elif sim == 'pearson':
+            result = TextSimilarity.pearson_sim(str1_emb, str2_emb)
+        elif sim == 'wmd' and method in ['w2v', 'fasttext']:
             model = self.w2v_model if method == 'w2v' else self.fasttext
-            str1_emb = np.array([model.wv.get_vector(word) if word in model.wv.vocab.keys() \
-                    else np.random.randn(1, 300) for word in str1.split()]).mean(axis=0).reshape(1, -1)
-            str2_emb = np.array([model.wv.get_vector(word) if word in model.wv.vocab.keys() \
-                    else np.random.randn(1, 300) for word in str2.split()]).mean(axis=0).reshape(1, -1)
-        # elif method == 'tfidf':
-        #     str1_emb = np.array(self.tfidf[self.dictionary.doc2bow(str1.split())])#.mean()
-        #     str2_emb = np.array(self.tfidf[self.dictionary.doc2bow(str2.split())])#.mean()
-        else:
-            NotImplementedError
-
-        if str1_emb is not None and str2_emb is not None:
-            if sim == 'cos':
-                result = TextSimilarity.cos_sim(str1_emb, str2_emb)
-            elif sim == 'eucl':
-                result = TextSimilarity.eucl_sim(str1_emb, str2_emb)
-            elif sim == 'pearson':
-                result = TextSimilarity.pearson_sim(str1_emb, str2_emb)
-            elif sim == 'wmd' and model:
-                result = model.wmdistance(str1, str2)
-        return result 
+            result = model.wmdistance(" ".join(self.tokenize(str1)), " ".join(self.tokenize(str2)))
+        return result
     
-    def tfidf_sim(self, str1, str2):
-        str1, str2 = self.tokenize(str1)[0], self.tokenize(str2)[0]
-        str1_tfidf = self.tfidf[self.dictionary.doc2bow(str1.split())]
-        str2_tfidf = self.tfidf[self.dictionary.doc2bow(str2.split())]
-
-        self.corpus_tfidf = self.tfidf[self.corpus] 
-        self.index = similarities.MatrixSimilarity(self.corpus_tfidf)
-
-
     def generate_all(self, str1, str2):
         return {
             "lcs":        self.lcs(str1, str2),
             "edit_dist":  self.editDistance(str1, str2),
             "jaccard":    self.JaccardSim(str1, str2),
             "bm25":       self.bm25.get_score(str1, str2),
-            "w2v_cos":    self.tokenSimilarity(str1, str2, method='w2v', sim='cos'),
-            "w2v_eucl":   self.tokenSimilarity(str1, str2, method='w2v', sim='eucl'),
-            "w2v_pearson":   self.tokenSimilarity(str1, str2, method='w2v', sim='pearson'),
-            "w2v_wmd":       self.tokenSimilarity(str1, str2, method='w2v', sim='wmd'),
-            "fast_cos":      self.tokenSimilarity(str1, str2, method='fast', sim='cos'),
-            "fast_eucl":     self.tokenSimilarity(str1, str2, method='fast', sim='eucl'),
-            "fast_pearson":  self.tokenSimilarity(str1, str2, method='fast', sim='pearson'),
-            "fast_wmd":      self.tokenSimilarity(str1, str2, method='fast', sim='wmd'),
-            # "tfidf_cos":     self.tokenSimilarity(str1, str2, method='tfidf', sim='cos'),
-            # "tfidf_eucl":    self.tokenSimilarity(str1, str2, method='tfidf', sim='eucl'),
-            # "tfidf_pearson": self.tokenSimilarity(str1, str2, method='tfidf', sim='pearson')
+            # "w2v_cos":    self.tokenSimilarity(str1, str2, method='w2v', weight=None, sim='cos'),
+            # "w2v_eucl":   self.tokenSimilarity(str1, str2, method='w2v', weight=None, sim='eucl'),
+            # "w2v_pearson":   self.tokenSimilarity(str1, str2, method='w2v', weight=None, sim='pearson'),
+            "w2v_wmd":       self.tokenSimilarity(str1, str2, method='w2v',weight=None,  sim='wmd'),
+            # "fast_cos":      self.tokenSimilarity(str1, str2, method='fasttext',weight=None,  sim='cos'),
+            # "fast_eucl":     self.tokenSimilarity(str1, str2, method='fasttext',weight=None,  sim='eucl'),
+            # "fast_pearson":  self.tokenSimilarity(str1, str2, method='fasttext',weight=None,  sim='pearson'),
+            "fast_wmd":      self.tokenSimilarity(str1, str2, method='fasttext', weight=None, sim='wmd'),
+            "w2v_cos_sif":    self.tokenSimilarity(str1, str2, method='w2v', weight='sif', sim='cos'),
+            "w2v_eucl_sif":   self.tokenSimilarity(str1, str2, method='w2v', weight='sif', sim='eucl'),
+            "w2v_pearson_sif":   self.tokenSimilarity(str1, str2, method='w2v', weight='sif', sim='pearson'),
+            # "w2v_wmd":       self.tokenSimilarity(str1, str2, method='w2v',weight=None,  sim='wmd'),
+            "fast_cos_sif":      self.tokenSimilarity(str1, str2, method='fasttext',weight='sif',  sim='cos'),
+            "fast_eucl_sif":     self.tokenSimilarity(str1, str2, method='fasttext',weight='sif',  sim='eucl'),
+            "fast_pearson_sif":  self.tokenSimilarity(str1, str2, method='fasttext',weight='sif',  sim='pearson'),
+            # "fast_wmd":      self.tokenSimilarity(str1, str2, method='fasttext', weight=None, sim='wmd'),
+
         }
-
-
-
-
-        

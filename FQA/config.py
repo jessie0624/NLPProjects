@@ -20,7 +20,8 @@ data_path.mkdir(parents=True, exist_ok=True)
 data_intention_path.mkdir(parents=True, exist_ok=True)
 data_retrieval_path.mkdir(parents=True, exist_ok=True)
 data_ranking_path.mkdir(parents=True, exist_ok=True)
-
+Path(root_path/'log').mkdir(parents=True, exist_ok=True)
+Path(root_path / "model" /"ranking4").mkdir(parents=True, exist_ok=True)
 ### Model ###
 model_path = root_path / "model"
 model_path.mkdir(parents=True, exist_ok=True)
@@ -69,8 +70,12 @@ hnsw_path_sif = model_path / "retrieval" / "hnsw_index_sif"
 # ranking
 ranking_raw_path =  data_path / "ranking_raw_data"
 ranking_train = data_ranking_path / "train_all.csv"
+ranking_train_clean = data_ranking_path / "train_all_clean.csv"
+
 ranking_bert_train = data_ranking_path / "train.csv"
 ranking_bert_dev = data_ranking_path / "dev.csv"
+ranking_bert_train_clean = data_ranking_path / "train_clean.csv"
+ranking_bert_dev_clean = data_ranking_path / "dev_clean.csv"
 rank_model = 'bert'
 # ranking_dev = data_ranking_path / "dev.csv"
 
@@ -107,3 +112,11 @@ if is_cuda:
     device = torch.device("cuda")
 else:
     device = torch.device("cpu")
+
+# ranking2 model
+model_name_or_path = root_path/"lib"/'bert'
+r2_data_dir = root_path / "data" / "ranking/0"
+r2_output_dir = root_path/"model"/"ranking"
+# per_gpu_train_batch_size = 32
+num_train_epochs = 20.0
+raw_file = root_path /"data"/ "ranking"/"pc_atec_double.csv"
